@@ -1,3 +1,28 @@
+# Rider
+.idea/
+*.sln.iml
+*.suo
+*.user
+.vs/
+
+# Build results
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Environment variables
+appsettings.Development.json
+.env
+.env.local
+
 bin/
 obj/
 /packages/
