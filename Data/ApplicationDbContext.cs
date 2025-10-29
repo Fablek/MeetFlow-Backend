@@ -1,18 +1,28 @@
 using Microsoft.EntityFrameworkCore;
+using MeetFlow_Backend.Models;
 
-namespace MeetFlow_Backend.Data;
-
-public class ApplicationDbContext : DbContext
+namespace MeetFlow_Backend.Data
 {
-    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) 
-        : base(options)
+    public class ApplicationDbContext : DbContext
     {
-    }
-    
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
-    {
-        base.OnModelCreating(modelBuilder);
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) 
+            : base(options)
+        {
+        }
+        
+        public DbSet<User> Users { get; set; }
 
-        // Konfiguracja relacji, indeksów
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+            
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.Email)
+                .IsUnique();
+
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.Username)
+                .IsUnique();
+        }
     }
 }

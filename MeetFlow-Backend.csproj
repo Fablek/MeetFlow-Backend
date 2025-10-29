@@ -29,7 +29,6 @@
       <Folder Include="Configuration\" />
       <Folder Include="DTOs\" />
       <Folder Include="Middleware\" />
-      <Folder Include="Models\" />
       <Folder Include="Services\Implementations\" />
       <Folder Include="Services\Interfaces\" />
       <Folder Include="Utils\" />
