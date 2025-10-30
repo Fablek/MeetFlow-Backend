@@ -4,6 +4,8 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
 using MeetFlow_Backend.Data;
+using MeetFlow_Backend.Services.Interfaces;
+using MeetFlow_Backend.Services.Implementations;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,6 +24,9 @@ var jwtAudience = configuration["JwtSettings:Audience"]!;
 // Database Context (PostgreSQL)
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddScoped<IJwtService, JwtService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
 
 // Controllers
 builder.Services.AddControllers();
