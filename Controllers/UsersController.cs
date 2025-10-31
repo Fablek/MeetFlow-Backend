@@ -40,4 +40,35 @@ public class UsersController : ControllerBase
 
         return Ok(userProfile);
     }
+
+    /// <summary>
+    /// Update current user profile
+    /// </summary>
+    [HttpPost("me")]
+    public async Task<ActionResult<UserProfileResponse>> UpdateCurrentUser([FromBody] UpdateProfileRequest request)
+    {
+        // Get User Id from JWT Token
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+        {
+            return Unauthorized(new { error = "Invalid token" });
+        }
+
+        try
+        {
+            var userProfile = await _userService.UpdateProfileAsync(userId, request);
+
+            if (userProfile == null)
+            {
+                return NotFound(new { error = "User not found" });
+            }
+
+            return Ok(userProfile);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
 }
