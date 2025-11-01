@@ -12,6 +12,7 @@ namespace MeetFlow_Backend.Data
         
         public DbSet<User> Users { get; set; }
         public DbSet<EventType> EventTypes { get; set; }
+        public DbSet<Availability> Availabilities { get; set; } 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -36,6 +37,16 @@ namespace MeetFlow_Backend.Data
 
             modelBuilder.Entity<EventType>()
                 .HasIndex(e => e.IsActive);
+            
+            // ===================================
+            // Availability - indexes
+            // ===================================
+    
+            modelBuilder.Entity<Availability>()
+                .HasIndex(a => a.UserId);
+
+            modelBuilder.Entity<Availability>()
+                .HasIndex(a => new { a.UserId, a.DayOfWeek });
 
             // ===================================
             // Relationships
@@ -46,6 +57,13 @@ namespace MeetFlow_Backend.Data
                 .HasOne(e => e.User)
                 .WithMany(u => u.EventTypes)
                 .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade); // Delete event types when user deleted
+            
+            // User -> Availabilities (1:N)
+            modelBuilder.Entity<Availability>()
+                .HasOne(a => a.User)
+                .WithMany(u => u.Availabilities)
+                .HasForeignKey(a => a.UserId)
                 .OnDelete(DeleteBehavior.Cascade); // Delete event types when user deleted
         }
     }
