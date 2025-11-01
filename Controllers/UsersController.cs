@@ -44,7 +44,7 @@ public class UsersController : ControllerBase
     /// <summary>
     /// Update current user profile
     /// </summary>
-    [HttpPost("me")]
+    [HttpPut("me")]
     public async Task<ActionResult<UserProfileResponse>> UpdateCurrentUser([FromBody] UpdateProfileRequest request)
     {
         // Get User Id from JWT Token
