@@ -28,6 +28,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>(); 
+builder.Services.AddScoped<IEventTypeService, EventTypeService>();
 
 // Controllers
 builder.Services.AddControllers();
