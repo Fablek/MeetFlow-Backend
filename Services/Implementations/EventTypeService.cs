@@ -17,20 +17,34 @@ public class EventTypeService : IEventTypeService
 
     public async Task<EventTypeResponse> CreateEventTypeAsync(Guid userId, CreateEventTypeRequest request)
     {
-        // Check if slug already exists for this user
-        var slugExists = await _context.EventTypes
-            .AnyAsync(e => e.UserId == userId && e.Slug == request.Slug.ToLower());
-        
-        if (slugExists)
+        // Generate slug if not provided
+        string slug;
+        if (string.IsNullOrWhiteSpace(request.Slug))
         {
-            throw new Exception("Event type with this slug already exists");
+            // Auto-generate from name
+            var baseSlug = GenerateSlugFromName(request.Name);
+            slug = await GenerateUniqueSlugAsync(userId, baseSlug);
+        }
+        else
+        {
+            // Use provided slug (lowercase)
+            slug = request.Slug.ToLower();
+        
+            // Check if already exists
+            var slugExists = await _context.EventTypes
+                .AnyAsync(e => e.UserId == userId && e.Slug == slug);
+
+            if (slugExists)
+            {
+                throw new Exception("Event type with this slug already exists");
+            }
         }
         
         var eventType = new EventType
         {
             UserId = userId,
             Name = request.Name,
-            Slug = request.Slug.ToLower(),
+            Slug = slug,
             DurationMinutes = request.DurationMinutes,
             Description = request.Description,
             Location = request.Location,
@@ -145,5 +159,68 @@ public class EventTypeService : IEventTypeService
             CreatedAt = eventType.CreatedAt,
             UpdatedAt = eventType.UpdatedAt
         };
+    }
+
+    /// <summary>
+    /// Generate a URL-friendly slug from a string
+    /// </summary>
+    private static string GenerateSlugFromName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new Exception("Name cannot be empty");
+        }
+        
+        // Convert to lowercase and replace spaces with hyphens
+        var slug = name.ToLowerInvariant()
+            .Trim()
+            .Replace(" ", "-")
+            .Replace("_", "-");
+        
+        // Remove invalid characters (keep only lowercase letters, numbers, and hyphens)
+        slug = System.Text.RegularExpressions.Regex.Replace(slug, @"[^a-z0-9\-]", "");
+
+        // Remove duplicate hyphens
+        slug = System.Text.RegularExpressions.Regex.Replace(slug, @"-+", "-");
+
+        // Remove leading/trailing hyphens
+        slug = slug.Trim('-');
+        
+        // Limit length
+        if (slug.Length > 100)
+        {
+            slug = slug.Substring(0, 100).TrimEnd('-');
+        }
+
+        if (string.IsNullOrWhiteSpace(slug))
+        {
+            throw new Exception("Could not generate valid slug from name");
+        }
+
+        return slug;
+    }
+    
+    /// <summary>
+    /// Generate a unique slug for a user by adding a suffix if needed
+    /// </summary>
+    private async Task<string> GenerateUniqueSlugAsync(Guid userId, string baseSlug)
+    {
+        var slug = baseSlug;
+        var counter = 2;
+
+        // Check if slug exists
+        while (await _context.EventTypes.AnyAsync(e => e.UserId == userId && e.Slug == slug))
+        {
+            slug = $"{baseSlug}-{counter}";
+            counter++;
+
+            // Safety limit
+            if (counter > 100)
+            {
+                throw new Exception("Could not generate unique slug");
+            }
+        }
+
+        return slug;
     }
 }

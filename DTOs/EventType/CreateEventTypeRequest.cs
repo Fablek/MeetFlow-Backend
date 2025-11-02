@@ -7,11 +7,10 @@ public class CreateEventTypeRequest
     [Required]
     [StringLength(100, MinimumLength = 3)]
     public string Name { get; set; } = string.Empty;
-
-    [Required]
+    
     [StringLength(100, MinimumLength = 3)]
     [RegularExpression(@"^[a-z0-9-]+$", ErrorMessage = "Slug can only contain lowercase letters, numbers and hyphens")]
-    public string Slug { get; set; } = string.Empty;
+    public string? Slug { get; set; } 
     
     [Required]
     [Range(5, 480)] // 5 min to 8 h
