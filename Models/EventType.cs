@@ -6,7 +6,7 @@ namespace MeetFlow_Backend.Models;
 public class EventType
 {
     [Key]
-    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid Id { get; set; }
     
     [Required]
     [ForeignKey(nameof(User))]
@@ -31,7 +31,7 @@ public class EventType
     public string Location { get; set; } = "Online"; // Online, In-person, Phone
     
     [MaxLength(500)]
-    public string? LocationDetails { get; set; } // Link Zoom, adress, etc.
+    public string? LocationDetails { get; set; } // Link Zoom, address, etc.
     
     [Required]
     [MaxLength(7)]
@@ -49,4 +49,5 @@ public class EventType
     
     // Navigation properties
     public User User { get; set; } = null!;
+    public ICollection<Booking> Bookings { get; set; } = new List<Booking>();
 }

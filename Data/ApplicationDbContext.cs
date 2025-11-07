@@ -13,6 +13,7 @@ namespace MeetFlow_Backend.Data
         public DbSet<User> Users { get; set; }
         public DbSet<EventType> EventTypes { get; set; }
         public DbSet<Availability> Availabilities { get; set; } 
+        public DbSet<Booking> Bookings { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -47,6 +48,25 @@ namespace MeetFlow_Backend.Data
 
             modelBuilder.Entity<Availability>()
                 .HasIndex(a => new { a.UserId, a.DayOfWeek });
+            
+            // ===================================
+            // Booking - indexes
+            // ===================================
+
+            modelBuilder.Entity<Booking>()
+                .HasIndex(b => b.EventTypeId);
+
+            modelBuilder.Entity<Booking>()
+                .HasIndex(b => b.GuestEmail);
+
+            modelBuilder.Entity<Booking>()
+                .HasIndex(b => new { b.EventTypeId, b.StartTime });
+
+            modelBuilder.Entity<Booking>()
+                .HasIndex(b => b.Status);
+
+            modelBuilder.Entity<Booking>()
+                .HasIndex(b => b.CreatedAt);
 
             // ===================================
             // Relationships
@@ -65,6 +85,13 @@ namespace MeetFlow_Backend.Data
                 .WithMany(u => u.Availabilities)
                 .HasForeignKey(a => a.UserId)
                 .OnDelete(DeleteBehavior.Cascade); // Delete event types when user deleted
+            
+            // EventType -> Bookings (1:N)
+            modelBuilder.Entity<Booking>()
+                .HasOne(b => b.EventType)
+                .WithMany(e => e.Bookings)
+                .HasForeignKey(b => b.EventTypeId)
+                .OnDelete(DeleteBehavior.Cascade); // Delete bookings when event type deleted
         }
     }
 }
