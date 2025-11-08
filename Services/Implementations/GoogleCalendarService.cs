@@ -10,6 +10,7 @@ using Google.Apis.Calendar.v3;
 using MeetFlow_Backend.Data;
 using MeetFlow_Backend.Models;
 using MeetFlow_Backend.Services.Interfaces;
+using MeetFlow_Backend.DTOs.Google;
 
 namespace MeetFlow_Backend.Services.Implementations;
 
@@ -172,5 +173,43 @@ public class GoogleCalendarService : IGoogleCalendarService
         {
             return false;
         }
+    }
+
+    public async Task<GoogleIntegrationResponse> GetIntegrationStatusAsync(Guid userId)
+    {
+        var integration = await _context.GoogleIntegrations
+            .FirstOrDefaultAsync(g => g.UserId == userId);
+
+        if (integration == null || !integration.IsActive)
+        {
+            return new GoogleIntegrationResponse
+            {
+                IsConnected = false
+            };
+        }
+
+        return new GoogleIntegrationResponse
+        {
+            IsConnected = true,
+            GoogleEmail = integration.GoogleEmail,
+            CalendarId = integration.CalendarId,
+            ConnectedAt = integration.CreatedAt
+        };
+    }
+    
+    public async Task<bool> DisconnectAsync(Guid userId)
+    {
+        var integration = await _context.GoogleIntegrations
+            .FirstOrDefaultAsync(g => g.UserId == userId);
+
+        if (integration == null)
+        {
+            return false;
+        }
+
+        _context.GoogleIntegrations.Remove(integration);
+        await _context.SaveChangesAsync();
+    
+        return true;
     }
 }
