@@ -32,4 +32,5 @@ public class User
     // Navigation properties
     public ICollection<EventType> EventTypes { get; set; } = new List<EventType>();
     public ICollection<Availability> Availabilities { get; set; } = new List<Availability>();
+    public GoogleIntegration? GoogleIntegration { get; set; }
 }

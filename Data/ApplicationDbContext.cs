@@ -14,6 +14,7 @@ namespace MeetFlow_Backend.Data
         public DbSet<EventType> EventTypes { get; set; }
         public DbSet<Availability> Availabilities { get; set; } 
         public DbSet<Booking> Bookings { get; set; }
+        public DbSet<GoogleIntegration> GoogleIntegrations { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -67,6 +68,20 @@ namespace MeetFlow_Backend.Data
 
             modelBuilder.Entity<Booking>()
                 .HasIndex(b => b.CreatedAt);
+            
+            // ===================================
+            // GoogleIntegration - indexes
+            // ===================================
+
+            modelBuilder.Entity<GoogleIntegration>()
+                .HasIndex(g => g.UserId)
+                .IsUnique(); // One integration per user
+
+            modelBuilder.Entity<GoogleIntegration>()
+                .HasIndex(g => g.GoogleEmail);
+
+            modelBuilder.Entity<GoogleIntegration>()
+                .HasIndex(g => g.IsActive);
 
             // ===================================
             // Relationships
@@ -92,6 +107,13 @@ namespace MeetFlow_Backend.Data
                 .WithMany(e => e.Bookings)
                 .HasForeignKey(b => b.EventTypeId)
                 .OnDelete(DeleteBehavior.Cascade); // Delete bookings when event type deleted
+            
+            // User -> GoogleIntegration (1:1)
+            modelBuilder.Entity<GoogleIntegration>()
+                .HasOne(g => g.User)
+                .WithOne(u => u.GoogleIntegration)
+                .HasForeignKey<GoogleIntegration>(g => g.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

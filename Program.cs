@@ -30,6 +30,7 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>(); 
 builder.Services.AddScoped<IEventTypeService, EventTypeService>();
 builder.Services.AddScoped<IAvailabilityService, AvailabilityService>(); 
+builder.Services.AddScoped<IGoogleCalendarService, GoogleCalendarService>();
 
 // Controllers
 builder.Services.AddControllers();
