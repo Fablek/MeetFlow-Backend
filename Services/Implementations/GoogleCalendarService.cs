@@ -50,7 +50,7 @@ public class GoogleCalendarService : IGoogleCalendarService
             .ToString();
         
         // Add state parameter with userId for security
-        authUrl += $"&state={userId}&access_type=offline&prompt=consent";
+        authUrl += $"&state={userId}&prompt=consent";
 
         return authUrl;
     }
