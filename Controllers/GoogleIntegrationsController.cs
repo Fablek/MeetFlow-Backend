@@ -134,4 +134,38 @@ public class GoogleIntegrationsController : ControllerBase
             return StatusCode(500, new { error = ex.Message });
         }
     }
+
+    /// <summary>
+    /// Get user's Google Calendars
+    /// </summary>
+    [HttpGet("calendars")]
+    [ProducesResponseType(typeof(List<CalendarDto>), 200)]
+    public async Task<ActionResult<List<CalendarDto>>> GetCalendars()
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+        {
+            return Unauthorized(new { error = "User not authenticated" });
+        }
+
+        try
+        {
+            var calendars = await _googleCalendarService.GetCalendarsAsync(userId);
+
+            if (calendars == null)
+            {
+                return NotFound(new
+                {
+                    error = "Google Calendar not connected. Please connect first.",
+                    hint = "Use GET /api/integrations/google/connect to get authorization URL"
+                });
+            }
+
+            return Ok(calendars);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = $"Failed to fetch calendars: {ex.Message}" });
+        }
+    }
 }

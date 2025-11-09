@@ -10,4 +10,5 @@ public interface IGoogleCalendarService
     Task<bool> RefreshTokenAsync(Guid userId);
     Task<GoogleIntegrationResponse> GetIntegrationStatusAsync(Guid userId);
     Task<bool> DisconnectAsync(Guid userId);
+    Task<List<CalendarDto>?> GetCalendarsAsync(Guid userId);
 }

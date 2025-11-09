@@ -212,4 +212,84 @@ public class GoogleCalendarService : IGoogleCalendarService
     
         return true;
     }
+
+    public async Task<List<CalendarDto>?> GetCalendarsAsync(Guid userId)
+    {
+        var integration = await _context.GoogleIntegrations
+            .FirstOrDefaultAsync(g => g.UserId == userId && g.IsActive);
+
+        if (integration == null)
+        {
+            return null; // Not connected
+        }
+        
+        // Refresh token if expired (within 5 minutes)
+        if (integration.TokenExpiresAt <= DateTime.UtcNow.AddMinutes(5))
+        {
+            var refreshed = await RefreshTokenAsync(userId);
+            if (!refreshed)
+            {
+                return null;
+            }
+            
+            // Reload integration with fresh token
+            integration = await _context.GoogleIntegrations
+                .FirstOrDefaultAsync(g => g.UserId == userId && g.IsActive);
+        }
+
+        try
+        {
+            var clientId = _configuration["GoogleOAuth:ClientId"];
+            var clientSecret = _configuration["GoogleOAuth:ClientSecret"];
+
+            var flow = new GoogleAuthorizationCodeFlow(new GoogleAuthorizationCodeFlow.Initializer
+            {
+                ClientSecrets = new ClientSecrets
+                {
+                    ClientId = clientId,
+                    ClientSecret = clientSecret
+                },
+                Scopes = new[]
+                {
+                    CalendarService.Scope.Calendar,
+                    CalendarService.Scope.CalendarEvents
+                }
+            });
+
+            var token = new Google.Apis.Auth.OAuth2.Responses.TokenResponse
+            {
+                AccessToken = integration.AccessToken,
+                RefreshToken = integration.RefreshToken,
+                ExpiresInSeconds = (long)(integration.TokenExpiresAt - DateTime.UtcNow).TotalSeconds
+            };
+
+            var credential = new UserCredential(flow, userId.ToString(), token);
+
+            var service = new CalendarService(new Google.Apis.Services.BaseClientService.Initializer
+            {
+                HttpClientInitializer = credential,
+                ApplicationName = "MeetFlow"
+            });
+
+            var calendarListRequest = service.CalendarList.List();
+            var calendarList = await calendarListRequest.ExecuteAsync();
+
+            var calendars = calendarList.Items.Select(c => new CalendarDto
+            {
+                Id = c.Id,
+                Summary = c.Summary ?? "Unnamed Calendar",
+                Description = c.Description,
+                Primary = c.Primary ?? false,
+                TimeZone = c.TimeZone,
+                BackgroundColor = c.BackgroundColor
+            }).ToList();
+
+            return calendars;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching calendars: {ex.Message}");
+            return null;
+        }
+    }
 }
