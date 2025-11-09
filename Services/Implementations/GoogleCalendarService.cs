@@ -292,4 +292,115 @@ public class GoogleCalendarService : IGoogleCalendarService
             return null;
         }
     }
+
+    public async Task<List<BusySlotDto>?> GetBusySlotsAsync(
+        Guid userId,
+        DateTime startDate,
+        DateTime endDate,
+        List<string>? calendarIds = null)
+    {
+        var integration = await _context.GoogleIntegrations
+            .FirstOrDefaultAsync(g => g.UserId == userId && g.IsActive);
+
+        if (integration == null)
+        {
+            return null; // Not connected
+        }
+        
+        // Refresh token if expired
+        if (integration.TokenExpiresAt <= DateTime.UtcNow.AddMinutes(5))
+        {
+            var refreshed = await RefreshTokenAsync(userId);
+            if (!refreshed)
+            {
+                return null;
+            }
+        
+            integration = await _context.GoogleIntegrations
+                .FirstOrDefaultAsync(g => g.UserId == userId && g.IsActive);
+        }
+
+        try
+        {
+            var clientId = _configuration["GoogleOAuth:ClientId"];
+            var clientSecret = _configuration["GoogleOAuth:ClientSecret"];
+
+            var flow = new GoogleAuthorizationCodeFlow(new GoogleAuthorizationCodeFlow.Initializer
+            {
+                ClientSecrets = new ClientSecrets
+                {
+                    ClientId = clientId,
+                    ClientSecret = clientSecret
+                },
+                Scopes = new[]
+                {
+                    CalendarService.Scope.Calendar,
+                    CalendarService.Scope.CalendarEvents
+                }
+            });
+
+            var token = new Google.Apis.Auth.OAuth2.Responses.TokenResponse
+            {
+                AccessToken = integration.AccessToken,
+                RefreshToken = integration.RefreshToken,
+                ExpiresInSeconds = (long)(integration.TokenExpiresAt - DateTime.UtcNow).TotalSeconds
+            };
+
+            var credential = new UserCredential(flow, userId.ToString(), token);
+
+            var service = new CalendarService(new Google.Apis.Services.BaseClientService.Initializer
+            {
+                HttpClientInitializer = credential,
+                ApplicationName = "MeetFlow"
+            });
+
+            // If no specific calendars provided, use primary
+            var calendarsToCheck = calendarIds ?? new List<string> { integration.CalendarId ?? "primary" };
+
+            var busySlots = new List<BusySlotDto>();
+
+            foreach (var calendarId in calendarsToCheck)
+            {
+                // Get events from calendar
+                var eventsRequest = service.Events.List(calendarId);
+                eventsRequest.TimeMin = startDate;
+                eventsRequest.TimeMax = endDate;
+                eventsRequest.SingleEvents = true; // Expand recurring events
+                eventsRequest.OrderBy = EventsResource.ListRequest.OrderByEnum.StartTime;
+
+                var events = await eventsRequest.ExecuteAsync();
+
+                foreach (var evt in events.Items)
+                {
+                    // Skip all-day events and events without start/end time
+                    if (evt.Start?.DateTime == null || evt.End?.DateTime == null)
+                    {
+                        continue;
+                    }
+
+                    // Skip declined events
+                    if (evt.Status == "cancelled")
+                    {
+                        continue;
+                    }
+
+                    busySlots.Add(new BusySlotDto
+                    {
+                        Start = evt.Start.DateTime.Value,
+                        End = evt.End.DateTime.Value,
+                        Summary = evt.Summary,
+                        CalendarId = calendarId
+                    });
+                }
+            }
+
+            // Sort by start time
+            return busySlots.OrderBy(s => s.Start).ToList();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching busy slots: {ex.Message}");
+            return null;
+        }
+    }
 }

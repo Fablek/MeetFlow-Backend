@@ -168,4 +168,53 @@ public class GoogleIntegrationsController : ControllerBase
             return StatusCode(500, new { error = $"Failed to fetch calendars: {ex.Message}" });
         }
     }
+
+    /// <summary>
+    /// Get busy slots from Google Calendar
+    /// </summary>
+    [HttpPost("busy-slots")]
+    [ProducesResponseType(typeof(List<BusySlotDto>), 200)]
+    public async Task<ActionResult<List<BusySlotDto>>> GetBusySlots([FromBody] GetBusySlotsRequest request)
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+        {
+            return Unauthorized(new { error = "User not authenticated" });
+        }
+        
+        if (request.StartDate >= request.EndDate)
+        {
+            return BadRequest(new { error = "StartDate must be before EndDate" });
+        }
+        
+        if ((request.EndDate - request.StartDate).TotalDays > 90)
+        {
+            return BadRequest(new { error = "Date range cannot exceed 90 days" });
+        }
+
+        try
+        {
+            var busySlots = await _googleCalendarService.GetBusySlotsAsync(
+                userId,
+                request.StartDate,
+                request.EndDate,
+                request.CalendarIds
+            );
+
+            if (busySlots == null)
+            {
+                return NotFound(new
+                {
+                    error = "Google Calendar not connected. Please connect first.",
+                    hint = "Use GET /api/integrations/google/connect to get authorization URL"
+                });
+            }
+
+            return Ok(busySlots);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = $"Failed to fetch busy slots: {ex.Message}" });
+        }
+    }
 }

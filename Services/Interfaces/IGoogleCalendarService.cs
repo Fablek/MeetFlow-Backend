@@ -11,4 +11,5 @@ public interface IGoogleCalendarService
     Task<GoogleIntegrationResponse> GetIntegrationStatusAsync(Guid userId);
     Task<bool> DisconnectAsync(Guid userId);
     Task<List<CalendarDto>?> GetCalendarsAsync(Guid userId);
+    Task<List<BusySlotDto>?> GetBusySlotsAsync(Guid userId, DateTime startDate, DateTime endDate, List<string>? calendarIds = null);
 }
