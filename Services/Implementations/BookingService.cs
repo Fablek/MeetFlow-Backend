@@ -258,4 +258,119 @@ public class BookingService : IBookingService
 
         return createdEvent.Id;
     }
+
+    public async Task<List<BookingListItemDto>> GetUserBookingsAsync(Guid userId, string? filter = null)
+    {
+        var query = _context.Bookings
+            .Include(b => b.EventType)
+            .Where(b => b.EventType.UserId == userId);
+        
+        // Apply filters
+        if (!string.IsNullOrEmpty(filter))
+        {
+            var now = DateTime.UtcNow;
+
+            switch (filter.ToLower())
+            {
+                case "upcoming":
+                    query = query.Where(b =>
+                        b.StartTime > now &&
+                        b.Status == BookingStatus.Confirmed);
+                    break;
+                
+                case "past":
+                    query = query.Where(b => b.EndTime < now);
+                    break;
+                
+                case "cancelled":
+                    query = query.Where(b => b.Status == BookingStatus.Cancelled);
+                    break;
+            
+                case "all":
+                default:
+                    // No additional filter
+                    break;
+            }
+        }
+
+        var bookings = await query
+            .OrderByDescending(b => b.StartTime)
+            .Select(b => new BookingListItemDto
+            {
+                Id = b.Id,
+                GuestName = b.GuestName,
+                GuestEmail = b.GuestEmail,
+                GuestPhone = b.GuestPhone,
+                Notes = b.Notes,
+                StartTime = b.StartTime,
+                EndTime = b.EndTime,
+                Status = b.Status,
+                EventTypeName = b.EventType.Name,
+                EventTypeSlug = b.EventType.Slug,
+                Location = b.EventType.Location,
+                DurationMinutes = b.EventType.DurationMinutes,
+                CreatedAt = b.CreatedAt
+            })
+            .ToListAsync();
+        
+        return bookings;
+    }
+    
+    public async Task<BookingListItemDto?> GetBookingByIdAsync(Guid bookingId, Guid userId)
+    {
+        var booking = await _context.Bookings
+            .Include(b => b.EventType)
+            .Where(b => b.Id == bookingId && b.EventType.UserId == userId)
+            .Select(b => new BookingListItemDto
+            {
+                Id = b.Id,
+                GuestName = b.GuestName,
+                GuestEmail = b.GuestEmail,
+                GuestPhone = b.GuestPhone,
+                Notes = b.Notes,
+                StartTime = b.StartTime,
+                EndTime = b.EndTime,
+                Status = b.Status,
+                EventTypeName = b.EventType.Name,
+                EventTypeSlug = b.EventType.Slug,
+                Location = b.EventType.Location,
+                DurationMinutes = b.EventType.DurationMinutes,
+                CreatedAt = b.CreatedAt
+            })
+            .FirstOrDefaultAsync();
+
+        return booking;
+    }
+    
+    public async Task<bool> CancelBookingAsync(Guid bookingId, Guid userId, string? reason = null)
+    {
+        var booking = await _context.Bookings
+            .Include(b => b.EventType)
+            .FirstOrDefaultAsync(b => 
+                b.Id == bookingId && 
+                b.EventType.UserId == userId);
+
+        if (booking == null)
+        {
+            return false;
+        }
+
+        // Only allow cancellation of confirmed bookings
+        if (booking.Status != BookingStatus.Confirmed)
+        {
+            return false;
+        }
+
+        booking.Status = BookingStatus.Cancelled;
+        booking.CancellationReason = reason;
+        booking.CancelledAt = DateTime.UtcNow;
+        booking.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        // TODO: Cancel Google Calendar event (optional)
+        // TODO: Send cancellation email to guest (optional)
+
+        return true;
+    }
 }

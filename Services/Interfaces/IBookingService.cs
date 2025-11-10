@@ -9,4 +9,7 @@ public interface IBookingService
         string username, 
         string slug, 
         CreateBookingRequest request);
+    Task<List<BookingListItemDto>> GetUserBookingsAsync(Guid userId, string? filter = null);
+    Task<BookingListItemDto?> GetBookingByIdAsync(Guid bookingId, Guid userId);
+    Task<bool> CancelBookingAsync(Guid bookingId, Guid userId, string? reason = null);
 }
