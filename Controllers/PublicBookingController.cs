@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using MeetFlow_Backend.Services.Interfaces;
 using MeetFlow_Backend.DTOs.Availability;
+using MeetFlow_Backend.DTOs.Booking; 
 
 namespace MeetFlow_Backend.Controllers;
 
@@ -9,10 +10,14 @@ namespace MeetFlow_Backend.Controllers;
 public class PublicBookingController : ControllerBase
 {
     private readonly IAvailabilityCalculationService _availabilityCalculationService;
+    private readonly IBookingService _bookingService;
     
-    public PublicBookingController(IAvailabilityCalculationService availabilityCalculationService)
+    public PublicBookingController(
+        IAvailabilityCalculationService availabilityCalculationService,
+        IBookingService bookingService)
     {
         _availabilityCalculationService = availabilityCalculationService;
+        _bookingService = bookingService;
     }
 
     /// <summary>
@@ -48,6 +53,42 @@ public class PublicBookingController : ControllerBase
         catch (Exception ex)
         {
             return StatusCode(500, new { error = $"Failed to fetch availability: {ex.Message}" });
+        }
+    }
+
+    /// <summary>
+    /// Create a booking (PUBLIC - no auth required)
+    /// </summary>
+    [HttpPost("book")]
+    [ProducesResponseType(typeof(BookingConfirmationResponse), 200)]
+    public async Task<ActionResult<BookingConfirmationResponse>> CreateBooking(
+        string username,
+        string slug,
+        [FromBody] CreateBookingRequest request)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+        
+        try
+        {
+            var confirmation = await _bookingService.CreateBookingAsync(username, slug, request);
+
+            if (confirmation == null)
+            {
+                return NotFound(new { error = "User or event type not found" });
+            }
+
+            return Ok(confirmation);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = $"Failed to create booking: {ex.Message}" });
         }
     }
 }

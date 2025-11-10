@@ -32,6 +32,7 @@ builder.Services.AddScoped<IEventTypeService, EventTypeService>();
 builder.Services.AddScoped<IAvailabilityService, AvailabilityService>(); 
 builder.Services.AddScoped<IGoogleCalendarService, GoogleCalendarService>();
 builder.Services.AddScoped<IAvailabilityCalculationService, AvailabilityCalculationService>();
+builder.Services.AddScoped<IBookingService, BookingService>();
 
 // Controllers
 builder.Services.AddControllers();
