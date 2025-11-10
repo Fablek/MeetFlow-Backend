@@ -373,7 +373,7 @@ public class GoogleCalendarService : IGoogleCalendarService
                 foreach (var evt in events.Items)
                 {
                     // Skip all-day events and events without start/end time
-                    if (evt.Start?.DateTime == null || evt.End?.DateTime == null)
+                    if (evt.Start?.DateTimeDateTimeOffset == null || evt.End?.DateTimeDateTimeOffset == null)
                     {
                         continue;
                     }
@@ -386,8 +386,8 @@ public class GoogleCalendarService : IGoogleCalendarService
 
                     busySlots.Add(new BusySlotDto
                     {
-                        Start = evt.Start.DateTime.Value,
-                        End = evt.End.DateTime.Value,
+                        Start = DateTime.SpecifyKind(evt.Start.DateTimeDateTimeOffset!.Value.DateTime, DateTimeKind.Utc),
+                        End = DateTime.SpecifyKind(evt.End.DateTimeDateTimeOffset!.Value.DateTime, DateTimeKind.Utc),
                         Summary = evt.Summary,
                         CalendarId = calendarId
                     });

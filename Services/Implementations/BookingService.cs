@@ -70,8 +70,8 @@ public class BookingService : IBookingService
             GuestName = request.GuestName,
             GuestPhone = request.GuestPhone,
             Notes = request.Notes,
-            StartTime = request.StartTime,
-            EndTime = endTime,
+            StartTime = DateTime.SpecifyKind(request.StartTime, DateTimeKind.Utc),
+            EndTime = DateTime.SpecifyKind(endTime, DateTimeKind.Utc),
             Status = BookingStatus.Confirmed,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow

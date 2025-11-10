@@ -95,9 +95,9 @@ public class AvailabilityCalculationService : IAvailabilityCalculationService
         }
         
         // 6. Get busy slots from Google Calendar (if connected)
-        var startOfDay = date.ToDateTime(TimeOnly.MinValue);
-        var endOfDay = date.ToDateTime(TimeOnly.MaxValue);
-        
+        var startOfDay = DateTime.SpecifyKind(date.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
+        var endOfDay = DateTime.SpecifyKind(date.ToDateTime(TimeOnly.MaxValue), DateTimeKind.Utc);
+
         var busySlots = await _googleCalendarService.GetBusySlotsAsync(
             user.Id,
             startOfDay,
@@ -109,8 +109,8 @@ public class AvailabilityCalculationService : IAvailabilityCalculationService
 
         foreach (var slot in availability)
         {
-            var slotStart = date.ToDateTime(slot.StartTime);
-            var slotEnd = date.ToDateTime(slot.EndTime);
+            var slotStart = DateTime.SpecifyKind(date.ToDateTime(slot.StartTime), DateTimeKind.Utc);
+            var slotEnd = DateTime.SpecifyKind(date.ToDateTime(slot.EndTime), DateTimeKind.Utc);
             
             // Generate slots every 15 minutes (or based on duration)
             var slotDuration = TimeSpan.FromMinutes(eventType.DurationMinutes);
@@ -124,7 +124,6 @@ public class AvailabilityCalculationService : IAvailabilityCalculationService
                 
                 // Check if this slot conflicts with any busy slots
                 var hasConflict = busySlots?.Any(busy =>
-                    // Overlap check (with buffer)
                     currentTime.Subtract(bufferDuration) < busy.End &&
                     potentialSlotEnd.Add(bufferDuration) > busy.Start
                 ) ?? false;
