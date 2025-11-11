@@ -78,7 +78,7 @@ namespace MeetFlow_Backend.Data
                 .IsUnique(); // One integration per user
 
             modelBuilder.Entity<GoogleIntegration>()
-                .HasIndex(g => g.GoogleEmail);
+                .HasIndex(g => g.Email);
 
             modelBuilder.Entity<GoogleIntegration>()
                 .HasIndex(g => g.IsActive);

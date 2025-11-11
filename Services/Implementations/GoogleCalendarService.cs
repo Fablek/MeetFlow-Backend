@@ -82,7 +82,28 @@ public class GoogleCalendarService : IGoogleCalendarService
             CancellationToken.None
         );
         
-        // Get user info from calendar
+        // Get user email from Google
+        string? userEmail = null;
+        try
+        {
+            using var httpClient = new HttpClient();
+            httpClient.DefaultRequestHeaders.Authorization = 
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token.AccessToken);
+            
+            var response = await httpClient.GetAsync("https://www.googleapis.com/oauth2/v2/userinfo");
+            if (response.IsSuccessStatusCode)
+            {
+                var json = await response.Content.ReadAsStringAsync();
+                var userInfo = System.Text.Json.JsonSerializer.Deserialize<GoogleUserInfo>(json);
+                userEmail = userInfo?.email;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to get user email: {ex.Message}");
+        }
+        
+        // Get calendar info
         var credential = new UserCredential(flow, userId.ToString(), token);
         var service = new CalendarService(new Google.Apis.Services.BaseClientService.Initializer
         {
@@ -104,9 +125,12 @@ public class GoogleCalendarService : IGoogleCalendarService
                 AccessToken = token.AccessToken,
                 RefreshToken = token.RefreshToken ?? string.Empty,
                 TokenExpiresAt = token.IssuedUtc.AddSeconds(token.ExpiresInSeconds ?? 3600),
-                GoogleEmail = primaryCalendar?.Summary ?? "unknown@gmail.com",
+                Email = userEmail,
                 CalendarId = primaryCalendar?.Id ?? "primary",
-                IsActive = true
+                CalendarName = primaryCalendar?.Summary ?? "Primary",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             };
             _context.GoogleIntegrations.Add(integration);
         }
@@ -118,8 +142,9 @@ public class GoogleCalendarService : IGoogleCalendarService
                 integration.RefreshToken = token.RefreshToken;
             }
             integration.TokenExpiresAt = token.IssuedUtc.AddSeconds(token.ExpiresInSeconds ?? 3600);
-            integration.GoogleEmail = primaryCalendar?.Summary ?? integration.GoogleEmail;
+            integration.Email = userEmail ?? integration.Email;
             integration.CalendarId = primaryCalendar?.Id ?? integration.CalendarId;
+            integration.CalendarName = primaryCalendar?.Summary ?? integration.CalendarName;
             integration.UpdatedAt = DateTime.UtcNow;
         }
         
@@ -191,7 +216,7 @@ public class GoogleCalendarService : IGoogleCalendarService
         return new GoogleIntegrationResponse
         {
             IsConnected = true,
-            GoogleEmail = integration.GoogleEmail,
+            GoogleEmail = integration.Email, 
             CalendarId = integration.CalendarId,
             ConnectedAt = integration.CreatedAt
         };
@@ -402,5 +427,11 @@ public class GoogleCalendarService : IGoogleCalendarService
             Console.WriteLine($"Error fetching busy slots: {ex.Message}");
             return null;
         }
+    }
+    
+    private class GoogleUserInfo
+    {
+        public string? email { get; set; }
+        public string? name { get; set; }
     }
 }

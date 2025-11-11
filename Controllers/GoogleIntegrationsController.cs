@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using MeetFlow_Backend.Services.Interfaces;
 using MeetFlow_Backend.DTOs.Google;
 using System.Security.Claims;
+using MeetFlow_Backend.Data;
+using Microsoft.EntityFrameworkCore; 
 
 namespace MeetFlow_Backend.Controllers;
 
@@ -12,10 +14,12 @@ namespace MeetFlow_Backend.Controllers;
 public class GoogleIntegrationsController : ControllerBase
 {
     private readonly IGoogleCalendarService _googleCalendarService;
+    private readonly ApplicationDbContext _context;
 
-    public GoogleIntegrationsController(IGoogleCalendarService googleCalendarService)
+    public GoogleIntegrationsController(IGoogleCalendarService googleCalendarService, ApplicationDbContext context)
     {
         _googleCalendarService = googleCalendarService;
+        _context = context;
     }
 
     /// <summary>
@@ -71,7 +75,7 @@ public class GoogleIntegrationsController : ControllerBase
             return Ok(new
             {
                 message = "Google Calendar connected successfully!",
-                googleEmail = integration.GoogleEmail,
+                googleEmail = integration.Email,
                 calendarId = integration.CalendarId,
                 expiresAt = integration.TokenExpiresAt
             });
@@ -79,59 +83,6 @@ public class GoogleIntegrationsController : ControllerBase
         catch (Exception ex)
         {
             return BadRequest(new { error = $"Failed to connect Google Calendar: {ex.Message}" });
-        }
-    }
-
-    /// <summary>
-    /// Get Google Calendar integration status
-    /// </summary>
-    [HttpGet("status")]
-    [ProducesResponseType(typeof(GoogleIntegrationResponse), 200)]
-    public async Task<ActionResult<GoogleIntegrationResponse>> GetStatus()
-    {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
-        {
-            return Unauthorized(new { error = "User not authenticated" });
-        }
-
-        try
-        {
-            var status = await _googleCalendarService.GetIntegrationStatusAsync(userId);
-            return Ok(status);
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { error = ex.Message });
-        }
-    }
-
-    /// <summary>
-    /// Disconnect Google Calendar integration
-    /// </summary>
-    [HttpDelete("disconnect")]
-    public async Task<ActionResult> Disconnect()
-    {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
-        {
-            return Unauthorized(new { error = "User not authenticated" });
-        }
-        
-        try
-        {
-            var success = await _googleCalendarService.DisconnectAsync(userId);
-            
-            if (success)
-            {
-                return Ok(new { message = "Google Calendar disconnected successfully" });
-            }
-            
-            return NotFound(new { error = "No Google Calendar integration found" });
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { error = ex.Message });
         }
     }
 
@@ -215,6 +166,80 @@ public class GoogleIntegrationsController : ControllerBase
         catch (Exception ex)
         {
             return StatusCode(500, new { error = $"Failed to fetch busy slots: {ex.Message}" });
+        }
+    }
+
+    /// <summary>
+    /// Get Google Calendar integration status
+    /// </summary>
+    [HttpGet("status")]
+    [ProducesResponseType(typeof(object), 200)]
+    public async Task<ActionResult> GetIntegrationStatus()
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+        {
+            return Unauthorized(new { error = "User not authenticated" });
+        }
+
+        try
+        {
+            var integration = await _context.GoogleIntegrations
+                .FirstOrDefaultAsync(g => g.UserId == userId);
+            
+            if (integration == null || !integration.IsActive)
+            {
+                return Ok(new
+                {
+                    isConnected = false
+                });
+            }
+            
+            return Ok(new
+            {
+                isConnected = true,
+                calendarId = integration.CalendarId,
+                calendarName = integration.CalendarName,
+                email = integration.Email,
+                connectedAt = integration.CreatedAt
+            });
+        } 
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = $"Failed to get integration status: {ex.Message}" });
+        }
+    }
+    
+    /// <summary>
+    /// Disconnect Google Calendar
+    /// </summary>
+    [HttpDelete("disconnect")]
+    public async Task<ActionResult> DisconnectGoogle()
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+        {
+            return Unauthorized(new { error = "User not authenticated" });
+        }
+
+        try
+        {
+            var integration = await _context.GoogleIntegrations
+                .FirstOrDefaultAsync(g => g.UserId == userId);
+
+            if (integration == null)
+            {
+                return NotFound(new { error = "No Google Calendar integration found" });
+            }
+
+            _context.GoogleIntegrations.Remove(integration);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Google Calendar disconnected successfully" });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = $"Failed to disconnect: {ex.Message}" });
         }
     }
 }
