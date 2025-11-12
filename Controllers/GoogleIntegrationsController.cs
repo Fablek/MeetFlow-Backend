@@ -25,7 +25,7 @@ public class GoogleIntegrationsController : ControllerBase
     /// <summary>
     /// Step 1: Get Google OAuth authorization URL
     /// </summary>
-    [HttpGet("connect")]
+    [HttpPost("connect")]
     [ProducesResponseType(typeof(object), 200)]
     public async Task<ActionResult> GetAuthorizationUrl()
     {
